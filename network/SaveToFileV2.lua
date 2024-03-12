@@ -11,7 +11,8 @@ function Update()
 
     -- Update
     local fileOpen = io.open(filePath, 'r')
-    local fileContent = fileOpen:read()
+    local fileContent = fileOpen:read() or string.format("%.0f,%d", cumulativeDownloadCumulative, 0)
+    -- print(fileContent)
     local current_number_num, dataMenit = fileContent:match("(%d+),(%d+)")
     fileOpen:close()
 
