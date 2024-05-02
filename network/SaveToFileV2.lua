@@ -1,4 +1,5 @@
 function Initialize()
+    CurrPath = SKIN:GetVariable('CURRENTPATH')
     filePath = SKIN:MakePathAbsolute('CumulativeDataV2.txt')
     dailyPath = SKIN:MakePathAbsolute('DailyData.json')
     dailyDataTable = {}
@@ -16,11 +17,12 @@ function Update()
     local current_number_num, dataMenit = fileContent:match("(%d+),(%d+)")
     fileOpen:close()
 
-    local current_cumulative = current_number_num + cumulativeDownload
+    current_cumulative = current_number_num + cumulativeDownload
     dataMenit_cumulative = dataMenit + cumulativeDownload
 
     -- Handling Send Usage Every 1 minute
     if (os.date("%S")) == "00" then
+    -- if true then
         updateDailyData()
         sendUsage()
         dataMenit_cumulative = 0
@@ -58,6 +60,7 @@ function updateDailyData()
     local hourlyUsageInKB = (dailyData[currentDate][currentTime])/(1024)
     local hourlyUsageInKBWithUnit = string.format("%d KB", hourlyUsageInKB)
     SKIN:Bang('!SetOption', 'meterTotalHourlyUsageValue', 'Text', hourlyUsageInKBWithUnit)
+    backupData()
 end
 
 -- Fungsi bantu untuk mengurai data JSON-like
@@ -132,4 +135,43 @@ function GetMonthlyUsage(year, month)
         end
     end
     return totalUsage
+end
+
+function backupData()
+    local filePath_backup_daily = CurrPath .. "/Data/DailyData_" .. currentDate .. ".json"
+    local filePath_backup_cumulative = CurrPath .. "/Data/CumulativeData_" .. currentDate .. ".txt"
+    local dailyFileOpen
+    local cumulativeFileOpen
+    local function fileExists(name)
+        local f = io.open(name, "r")
+        if f ~= nil then
+            io.close(f)
+            return true
+        else
+            return false
+        end
+    end
+
+    if fileExists(filePath_backup_daily) then
+        dailyFileOpen = io.open(filePath_backup_daily, 'w+')
+        SaveJSON(dailyDataTable, dailyFileOpen)
+    else
+        dailyFileOpen,e = io.open(filePath_backup_daily, 'w+')
+        assert(dailyFileOpen,e)
+        dailyFileOpen:write('{}')
+        SaveJSON(dailyDataTable, dailyFileOpen)
+    end
+
+    if fileExists(filePath_backup_cumulative) then
+        cumulativeFileOpen = io.open(filePath_backup_cumulative, 'w+')
+        cumulativeFileOpen:write(current_cumulative)
+        cumulativeFileOpen:close()
+        print(current_cumulative)
+    else
+        cumulativeFileOpen,e = io.open(filePath_backup_cumulative, 'w+')
+        assert(cumulativeFileOpen,e)
+        cumulativeFileOpen:write(current_cumulative)
+        cumulativeFileOpen:close()
+    end
+
 end
