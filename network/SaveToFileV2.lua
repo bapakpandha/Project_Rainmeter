@@ -12,7 +12,7 @@ function Update()
 
     -- Update
     local fileOpen = io.open(filePath, 'r')
-    local fileContent = fileOpen:read() or string.format("%.0f,%d", cumulativeDownloadCumulative, 0)
+    local fileContent = fileOpen:read() or fallbackCumulativeDataV2() or string.format("%.0f,%d", cumulativeDownloadCumulative, 0)
     -- print(fileContent)
     local current_number_num, dataMenit = fileContent:match("(%d+),(%d+)")
     fileOpen:close()
@@ -155,18 +155,19 @@ function backupData()
     if fileExists(filePath_backup_daily) then
         dailyFileOpen = io.open(filePath_backup_daily, 'w+')
         SaveJSON(dailyDataTable, dailyFileOpen)
+        dailyFileOpen:close()
     else
         dailyFileOpen,e = io.open(filePath_backup_daily, 'w+')
         assert(dailyFileOpen,e)
         dailyFileOpen:write('{}')
         SaveJSON(dailyDataTable, dailyFileOpen)
+        dailyFileOpen:close()
     end
 
     if fileExists(filePath_backup_cumulative) then
         cumulativeFileOpen = io.open(filePath_backup_cumulative, 'w+')
         cumulativeFileOpen:write(current_cumulative)
         cumulativeFileOpen:close()
-        print(current_cumulative)
     else
         cumulativeFileOpen,e = io.open(filePath_backup_cumulative, 'w+')
         assert(cumulativeFileOpen,e)
@@ -174,4 +175,63 @@ function backupData()
         cumulativeFileOpen:close()
     end
 
+end
+
+function fallbackCumulativeDataV2()
+    currentDate = os.date("%Y-%m-%d")
+    currentDateTable = {year = tonumber(string.sub(currentDate, 1, 4)), month = tonumber(string.sub(currentDate, 6, 7)), day = tonumber(string.sub(currentDate, 9, 10))}
+    previousDateTable = {year = currentDateTable.year, month = currentDateTable.month, day = currentDateTable.day - 1}
+    twoDaysPreviousDateTable = {year = currentDateTable.year, month = currentDateTable.month, day = currentDateTable.day - 2}
+
+    if previousDateTable.day <= 0 then
+        previousDateTable.day = 31
+        previousDateTable.month = previousDateTable.month - 1
+        if previousDateTable.month <= 0 then
+            previousDateTable.month = 12
+            previousDateTable.year = previousDateTable.year - 1
+        end
+    end
+
+    previousDate = string.format("%04d-%02d-%02d", previousDateTable.year, previousDateTable.month, previousDateTable.day)
+    twoDaysPreviousDate = string.format("%04d-%02d-%02d", twoDaysPreviousDateTable.year, twoDaysPreviousDateTable.month, twoDaysPreviousDateTable.day)
+
+    local filePath_backup_cumulative = CurrPath .. "/Data/CumulativeData_" .. currentDate .. ".txt"
+    local filePath_backup_cumulative2 = CurrPath .. "/Data/CumulativeData_" .. previousDate .. ".txt"
+    local filePath_backup_cumulative3 = CurrPath .. "/Data/CumulativeData_" .. twoDaysPreviousDate .. ".txt"
+
+    local cumulativeFileOpen
+    local fileContent
+    local function fileExists(name)
+        local f = io.open(name, "r")
+        if f ~= nil then
+            io.close(f)
+            return true
+        else
+            return false
+        end
+    end
+
+    if fileExists(filePath_backup_cumulative) then
+        cumulativeFileOpen = io.open(filePath_backup_cumulative, 'r')
+        fileContent = cumulativeFileOpen:read()
+        cumulativeFileOpen:close()
+        print("using today backup")
+    elseif fileExists(filePath_backup_cumulative2) then
+        cumulativeFileOpen = io.open(filePath_backup_cumulative2, 'r')
+        fileContent = cumulativeFileOpen:read()
+        cumulativeFileOpen:close()
+        print("using yesterday backup")
+    elseif fileExists(filePath_backup_cumulative3) then
+        cumulativeFileOpen = io.open(filePath_backup_cumulative3, 'r')
+        fileContent = cumulativeFileOpen:read()
+        cumulativeFileOpen:close()
+        print("using 2 days ago backup")
+    else
+        print("failed using fallback")
+        return false
+    end
+
+    formatted_file_content =  string.format("%.0f,%d", fileContent, 0)
+
+    return formatted_file_content
 end
